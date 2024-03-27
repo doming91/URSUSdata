@@ -1,0 +1,624 @@
+---
+title: "URSUSclean"
+format: html
+editor: visual
+---
+
+## Cleaning Annual URSUS data
+
+Authors: Taylor Domingos Date Began: 26 May 2021
+
+```{r}
+setwd("~/Dropbox/URSUS")
+install.packages("janitor")
+library (janitor)
+library (plyr)
+library(stringr)
+library(dplyr)
+
+# Read in CSV
+ursus1621 <- read.csv(file = "ursusmerged1621.csv", stringsAsFactors = FALSE)
+
+```
+
+## Clean YEAR variable
+
+```{r}
+# Create new columns 'y2016', 'y2017', 'y2018',  'y2019', 'y2020', 'y2021.'
+ursus1621$y2016 <- NA
+ursus1621$y2017 <- NA
+ursus1621$y2018 <- NA
+ursus1621$y2019 <- NA
+ursus1621$y2020 <- NA
+ursus1621$y2021 <- NA
+
+# From the stringr package use str_detect command to find any mention of the character /2016 in the incident_date column. 
+ursus1621$y2016 <- str_detect(ursus1621$incident_date, "/2016")
+ursus1621$y2017 <- str_detect(ursus1621$incident_date, "/2017")
+ursus1621$y2018 <- str_detect(ursus1621$incident_date, "/2018")
+ursus1621$y2019 <- str_detect(ursus1621$incident_date, "/2019")
+ursus1621$y2020 <- str_detect(ursus1621$incident_date, "/2020")
+ursus1621$y2021 <- str_detect(ursus1621$incident_date, "/2021")
+
+# Create empty year column
+ursus1621$year <- NA
+
+#Use the code below to change the 'TRUE' in columns y2016, y2017, y2018, y2019, y2020, y2021 to the year (2016, 2017, 2018, 2019, 2020, 2021). Use the table command after each to double check that it worked. 
+
+ursus1621$year[ursus1621$y2016==TRUE] <- 2016
+table(ursus1621$year, useNA = "ifany")
+
+ursus1621$year[ursus1621$y2017==TRUE] <- 2017
+table(ursus1621$year, useNA = "ifany")
+
+ursus1621$year[ursus1621$y2018==TRUE] <- 2018
+table(ursus1621$year, useNA = "ifany")
+
+ursus1621$year[ursus1621$y2019==TRUE] <- 2019
+table(ursus1621$year, useNA = "ifany")
+
+ursus1621$year[ursus1621$y2020==TRUE] <- 2020
+table(ursus1621$year, useNA = "ifany")
+
+ursus1621$year[ursus1621$y2021==TRUE] <- 2021
+table(ursus1621$year, useNA = "ifany")
+
+# Delete the 'y2016', 'y2017', 'y2018', 'y2019', 'y2020', 'y2021' columns
+y_columns <- paste0("y", 2016:2021)
+ursus1621[, y_columns] <- NULL
+
+
+```
+
+## Clean GENDER variable
+
+```{r}
+#Use the table command  to check if there are any blanks. There were 63 blanks. Use the ursus1621$gender[ursus1621$gender==""] <- "unknown" to change these blanks to 'unknown.'
+table(ursus1621$gender, useNA = "ifany")
+ursus1621$gender[ursus1621$gender==""] <- "unknown"
+table(ursus1621$gender, useNA = "ifany")
+
+```
+
+## Clean RACE variable
+
+```{r}
+# First use table command to check the options URSUS provides for race_ethnic_group. Then, change 63 blanks to 'unknown'. Use gsub commands to get rid of underscores,  comma, and forward slash. 
+table(ursus1621$race_ethnic_group, useNA = "ifany")
+ursus1621$race_ethnic_group[ursus1621$race_ethnic_group==""] <- "unknown"
+table(ursus1621$race_ethnic_group, useNA = "ifany")
+ursus1621$race_ethnic_group <- gsub("_"," ", ursus1621$race_ethnic_group)
+table(ursus1621$race_ethnic_group, useNA = "ifany")
+ursus1621$race_ethnic_group <- gsub(",","", ursus1621$race_ethnic_group)
+table(ursus1621$race_ethnic_group, useNA = "ifany")
+ursus1621$race_ethnic_group <- gsub(" /","", ursus1621$race_ethnic_group)
+table(ursus1621$race_ethnic_group, useNA = "ifany")
+
+# Method 1: Maintaining multiple race listings. 
+# a. Create a race1 column 
+# b. Change 'american indian' to 'indigenous'. 
+# c. Then, anytime URSUS lists multiple races, include them in 'multiple race' category.
+# d. The other categories 'hawaiian islander' and 'asian hawaiian islander' and 'asian pacific islander' are included in the 'asian' category. 
+# e. Combine 'Other' with 'Unknown.'
+
+# a. Create a race1 column
+ursus1621$race1 <- NA
+
+# b. c. d. & e. Use case_when for multiple conditions: multiple race, 'asian hawaiian islander' and 'asian pacific islander', and combine other with unknown
+ursus1621$race1 <- case_when(
+  ursus1621$race_ethnic_group %in% c("american indian black hispanic", "american indian hispanic", "american indian white", "asian indian black", "asian indian", "asian indian asian", "asian indian asian pacific islander", "asian indian hispanic", "asian indian white", "asian pacific islander other", "black asian pacific islander", "black hawaiian islander", "black hispanic", "black other", "black white", "black white other", "hispanic other", "hispanic white", "white asian", "white asian pacific islander", "white hawaiian islander", "white hawaiian islander other", "white other", "hawaiian islander other", "asian indian other") ~ "multiple race",
+  ursus1621$race_ethnic_group %in% c("asian", "asian hawaiian islander", "asian pacific islander", "hawaiian islander") ~ "asian",
+  ursus1621$race_ethnic_group %in% c("black") ~ "black",
+  ursus1621$race_ethnic_group %in% c("hispanic") ~ "hispanic",
+  ursus1621$race_ethnic_group %in% c("other") ~ "other",
+  ursus1621$race_ethnic_group %in% c("unknown") ~ "unknown",
+  ursus1621$race_ethnic_group %in% c("white") ~ "white",
+  ursus1621$race_ethnic_group %in% c("american indian") ~ "indigenous",
+  TRUE ~ NA_character_
+)
+
+# Display the distribution of 'race1' and 'race_ethnic_group' variables
+table(ursus1621$race1, useNA = "ifany")
+
+# Method 2: Hierarchical race listings. 
+# a. First create a race2 column. 
+# b. Change 'american indian' to 'indigenous'. 
+# c. Combine 'Other' with 'Unknown.' 
+# d. Code by order of mention: 1) Black 2) Hispanic 3) Asian 4) Indigenous 5) White 6) Unknown, 7) Other. Any mention of Black will be coded as Black. If no mention of Black, but mention of Hispanic, code as Hispanic. Go down in order. 
+
+# a. Create a race1 column
+ursus1621$race2 <- NA
+
+# b. c. d. & e. Use case_when for multiple conditions: hierarchical coding
+ursus1621$race2 <- case_when(
+  ursus1621$race_ethnic_group %in% c("american indian white", "american indian") ~ "indigenous",
+  ursus1621$race_ethnic_group %in% c("asian", "asian hawaiian islander", "asian indian", "asian indian asian", "asian indian asian pacific islander", "asian indian white", "asian pacific islander", "asian pacific islander other", "white asian", "white asian pacific islander", "white hawaiian islander", "white hawaiian islander other", "hawaiian islander", "hawaiian islander other", "asian indian other") ~ "asian",
+  ursus1621$race_ethnic_group %in% c("black", "american indian black hispanic", "black asian pacific islander", "black hawaiian islander", "black hispanic", "black other", "black white", "black white other", "asian indian black") ~ "black",
+  ursus1621$race_ethnic_group %in% c("hispanic", "hispanic other", "hispanic white", "american indian hispanic", "asian indian hispanic") ~ "hispanic",
+  ursus1621$race_ethnic_group == "other" ~ "other",
+  ursus1621$race_ethnic_group == "unknown" ~ "unknown",
+  ursus1621$race_ethnic_group %in% c("white", "white other") ~ "white",
+  TRUE ~ NA_character_
+)
+
+# Display the distribution
+table(ursus1621$race2, useNA = "ifany")
+
+
+```
+
+## Create new CSV file to only include civilian injuries. There should be 4395.
+
+```{r}
+c_ursus1621 <- ursus1621[ursus1621$civilian_officer=="civilian",]
+
+```
+
+## Clean INJURY_LEVEL variable
+
+```{r}
+# When the injury_level appears as false, rename to 'no injury.'
+c_ursus1621$injury_level[c_ursus1621$injured=="false"] <- "no injury"
+
+# Rename blanks to 'unknown.'
+c_ursus1621$injury_level[c_ursus1621$injury_level==""] <- "unknown"
+
+#Clean some language: Rename serious bodily injury and serious_injury to be called 'serious injury.'
+c_ursus1621$injury_level[c_ursus1621$injury_level=="serious bodily injury"] <- "serious injury"
+c_ursus1621$injury_level[c_ursus1621$injury_level=="serious_injury"] <- "serious injury"
+
+# Create new injury_level2 variable to be attentive to injury type. 
+# a. Changed "contusion, bone fracture" to serious injury because all other ones including bone fracture are listed as serious injury. 
+# b. Changed all the mentions of gunshot wound from injury to serious injury. 
+# c. Changed "unconscious, abrasion/laceration" to serious injury because all other entries with "unconscious" are listed as serious injuries.
+
+c_ursus1621$injury_level2 <- c_ursus1621$injury_level
+c_ursus1621$injury_level2[c_ursus1621$injury_type=="abrasion_laceration, gunshot_wound"&c_ursus1621$injury_level=="injury"] <- "serious injury"
+c_ursus1621$injury_level2[c_ursus1621$injury_type=="contusion, bone fracture"&c_ursus1621$injury_level=="injury"] <- "serious injury"
+c_ursus1621$injury_level2[c_ursus1621$injury_type=="gunshot wound"&c_ursus1621$injury_level=="injury"] <- "serious injury"
+c_ursus1621$injury_level2[c_ursus1621$injury_type=="gunshot_wound"&c_ursus1621$injury_level=="injury"] <- "serious injury"
+c_ursus1621$injury_level2[c_ursus1621$injury_type=="gunshot_wound, bruised"&c_ursus1621$injury_level=="injury"] <- "serious injury"
+c_ursus1621$injury_level2[c_ursus1621$injury_type=="unconscious, abrasion/laceration"&c_ursus1621$injury_level=="injury"] <- "serious injury"
+table(c_ursus1621$injury_level2, useNA = "ifany")
+
+```
+
+## Simplify CIVILIAN_PERCEIVED_ARMED_WEAPON variable to two categories.
+
+```{r}
+# Simplify civilian_perceived_armed_weapon to two categories.
+# a. Perceived armed with firearm (any mention of firearm)
+# b. Perceived armed with other dangerous weapon (knife, blade, stabbing, other dangerous weapon).
+
+# Create a new column c_p_armed_weapon
+c_ursus1621$c_p_armed_weapon <- NA
+
+#Code according to above mentioned scheme
+c_ursus1621$c_p_armed_weapon <- case_when(
+  c_ursus1621$civilian_perceived_armed == "false" ~ "none/missing",
+  grepl("firearm", c_ursus1621$civilian_perceived_armed_weapon, ignore.case = TRUE) ~ "firearm",
+  grepl("knife|blade|stabbing", c_ursus1621$civilian_perceived_armed_weapon, ignore.case = TRUE) ~ "other weapon",
+  grepl("other_dangerous_weapon", c_ursus1621$civilian_perceived_armed_weapon, ignore.case = TRUE) ~ "other weapon",
+  grepl("other dangerous weapon", c_ursus1621$civilian_perceived_armed_weapon, ignore.case = TRUE) ~ "other weapon",
+  grepl("unknown", c_ursus1621$civilian_perceived_armed_weapon, ignore.case = TRUE) ~ "none/missing",
+  TRUE ~ NA_character_
+)
+
+# Table NAs and their values for civilian_perceived_armed_weapon
+table(c_ursus1621$c_p_armed_weapon)
+
+```
+
+## Simplify CIVILIAN_CONFIRMED_ARMED_WEAPON variable to three categories (same as above).
+
+```{r}
+# Simplify civilian_confirmed_armed_weapon to two categories.
+# a. Perceived armed with firearm (any mention of firearm)
+# b. Perceived armed with other dangerous weapon (knife, blade, stabbing, other dangerous weapon).
+# c. firearm replica as firearm replica
+
+# Create a new column c_p_armed_weapon
+c_ursus1621$c_c_armed_weapon <- NA
+
+# Simplify c_confirmed_armed variable and drop NAs
+c_ursus1621$c_c_armed_weapon <- case_when(
+  c_ursus1621$civilian_confirmed_armed == "false" ~ "none",
+  grepl("firearm", c_ursus1621$civilian_confirmed_armed_weapon, ignore.case = TRUE) ~ "firearm",
+  grepl("firearm replica", c_ursus1621$civilian_confirmed_armed_weapon, ignore.case = TRUE) ~ "firearm replica",
+  grepl("knife|blade|stabbing", c_ursus1621$civilian_confirmed_armed_weapon, ignore.case = TRUE) ~ "other weapon",
+  grepl("other dangerous weapon", c_ursus1621$civilian_confirmed_armed_weapon, ignore.case = TRUE) ~ "other weapon",
+    grepl("other_dangerous_weapon", c_ursus1621$civilian_confirmed_armed_weapon, ignore.case = TRUE) ~ "other weapon",
+  grepl("unknown", c_ursus1621$civilian_confirmed_armed_weapon, ignore.case = TRUE) ~ "unknown",
+  TRUE ~ NA_character_
+)
+
+
+# Table NAs and their values for civilian_confirmed_armed. One of the blanks is confirmed to be armed so I will change this to confirmed armed unknown. I will also change all of the other 22 blanks to unknown.
+table(c_ursus1621$civilian_confirmed_armed[is.na(c_ursus1621$c_c_armed_weapon)])
+c_ursus1621$c_c_armed_weapon[c_ursus1621$civilian_confirmed_armed=="true"&c_ursus1621$civilian_confirmed_armed_weapon==""] <- "unknown"
+c_ursus1621$c_c_armed_weapon[c_ursus1621$civilian_confirmed_armed_weapon==""] <- "unknown"
+table(c_ursus1621$c_c_armed_weapon)
+table(c_ursus1621$civilian_confirmed_armed_weapon)
+
+
+```
+
+## Clean CONTACT_REASON variable.
+
+```{r}
+# Clean contact_reason variable
+table(c_ursus1621$contact_reason, useNA = "ifany")
+
+# Replace NAs with "unknown"
+c_ursus1621$contact_reason[is.na(c_ursus1621$contact_reason)] <- "unknown"
+
+# Create a new column contact_reason2
+c_ursus1621$contact_reason2 <- c_ursus1621$contact_reason
+
+# Mostly just fixing naming differences
+contact_reason_mapping <- c(
+  "call_for_service" = "call for service",
+  "civil_assembly" = "civil assembly",
+  "civil_disorder" = "civil disorder",
+  "ambush" = "ambush - no warning",
+  "consensual" = "consensual encounter / public contact / flag down",
+  "in_custody_event" = "in custody event",
+  "in_progress" = "crime in progress / investigating suspicious persons or circumstances",
+  "vehicle_bike_pedestrian" = "vehicle / bike / pedestrian stop",
+  "welfare_check" = "welfare check",
+  "pre_planned" = "pre-planned activity (arrest/search warrant, parole/probation search)"
+)
+
+c_ursus1621$contact_reason2 <- ifelse(c_ursus1621$contact_reason2 %in% names(contact_reason_mapping), contact_reason_mapping[c_ursus1621$contact_reason2], c_ursus1621$contact_reason2)
+
+table(c_ursus1621$contact_reason2, useNA = "ifany")
+
+
+```
+
+## Clean AGE variable.
+
+```{r}
+# Recoding based on the following categories:
+# a. 0-25
+# b. 26-35
+# c. 36-45
+# d. 46+
+# e. unknown
+
+# Create a new column age2
+c_ursus1621$age2 <- NA
+
+# Define age categories and recode them
+age_mapping <- c(
+  "0_9" = "0-25", "10_17" = "0-25", "17-oct" = "0-25", "18_20" = "0-25",
+  "18-20" = "0-25", "21_25" = "0-25", "21-25" = "0-25",
+  "26_30" = "26-35", "26-30" = "26-35", "31_35" = "26-35",
+  "31-35" = "26-35", "36_40" = "36-45", "36-40" = "36-45",
+  "41_45" = "36-45", "41-45" = "36-45", "46_50" = "46+",
+  "46-50" = "46+", "51_55" = "46+", "51-55" = "46+",
+  "56_60" = "46+", "56-60" = "46+", "61_65" = "46+",
+  "61-65" = "46+", "66_70" = "46+", "66-70" = "46+",
+  "71_75" = "46+", "71-75" = "46+", "76_80" = "46+",
+  "81_85" = "46+", "86_90" = "46+", "86-90" = "46+",
+  "91_95" = "46+", "unknown" = "unknown"
+)
+
+# Apply the mapping to create the new age2 variable
+c_ursus1621$age2 <- age_mapping[c_ursus1621$age]
+table(c_ursus1621$age2, useNA = "ifany")
+
+# Make 63 blanks 'unknown'
+c_ursus1621$age2[c_ursus1621$age==""] <- "unknown"
+```
+
+## Create NUMERIC variables for my GLM models for my covariates of interest. I don't know that I'll end up using all of these in my models, but it's useful to have them ready in case I want to.
+
+```{r}
+#1. Recode gender variable for statistical analysis. 
+# This automatically drops transgender cases because they are too small for analysis (n = 6) and unknown cases (n = 69)
+c_ursus1621$gender_model<-NA
+c_ursus1621$gender_model[c_ursus1621$gender=="male"] <- 0
+c_ursus1621$gender_model[c_ursus1621$gender=="female"] <- 1
+table(c_ursus1621$gender_model, useNA = "ifany")
+
+#2. Recode race1 variable for statistical analysis.
+# This automatically drops asian (n = 115), indigenous (n = 26), and unknown (n = 149) and multiple race (n = 33) because they are too small for analysis
+c_ursus1621$race1_model<-NA
+c_ursus1621$race1_model[c_ursus1621$race1=="white"] <- 0
+c_ursus1621$race1_model[c_ursus1621$race1=="black"] <- 1
+c_ursus1621$race1_model[c_ursus1621$race1=="hispanic"] <- 2
+c_ursus1621$race1_model[c_ursus1621$race1=="asian"] <- 3
+c_ursus1621$race1_model[c_ursus1621$race1=="indigenous"] <- 3
+c_ursus1621$race1_model[c_ursus1621$race1=="other"] <- 3
+c_ursus1621$race1_model[c_ursus1621$race1=="multiple race"] <- 3
+
+#3. Recode race2 variable for statistical analysis.
+# Here I am combining asian, indigenous, and other.NA's are the unknowns (n = 149)
+c_ursus1621$race2_model<-NA
+c_ursus1621$race2_model[c_ursus1621$race2=="white"] <- 0
+c_ursus1621$race2_model[c_ursus1621$race2=="black"] <- 1
+c_ursus1621$race2_model[c_ursus1621$race2=="hispanic"] <- 2
+c_ursus1621$race2_model[c_ursus1621$race2=="asian"] <- 3
+c_ursus1621$race2_model[c_ursus1621$race2=="indigenous"] <- 3
+c_ursus1621$race2_model[c_ursus1621$race2=="other"] <- 3
+table(c_ursus1621$race2_model, useNA = "ifany")
+
+#4. Recode age2 variable for statistical analysis.NA's are unknowns (n = 63)
+c_ursus1621$age_model<-NA
+c_ursus1621$age_model[c_ursus1621$age2=="0-25"] <- 0
+c_ursus1621$age_model[c_ursus1621$age2=="26-35"] <- 1
+c_ursus1621$age_model[c_ursus1621$age2=="36-45"] <- 2
+c_ursus1621$age_model[c_ursus1621$age2=="46+"] <- 3
+table(c_ursus1621$age_model, useNA = "ifany")
+
+#5. Recode injury_level2 variable for statistical analysis. This automatically drops all UNKNOWN injuries now because not useful for statistical analysis (n= 22). 
+c_ursus1621$injurylevel2_model <- NA
+c_ursus1621$injurylevel2_model[c_ursus1621$injury_level2=="death"] <- 0
+c_ursus1621$injurylevel2_model[c_ursus1621$injury_level2=="serious injury"] <- 1
+c_ursus1621$injurylevel2_model[c_ursus1621$injury_level2=="injury"] <- 2
+c_ursus1621$injurylevel2_model[c_ursus1621$injury_level2=="no injury"] <- 3
+table(c_ursus1621$injurylevel2_model, useNA = "ifany")
+
+#6. Contact reason: Here I am collapsing some of the categories since there are so many and I don't have much trust in this variable anyways based on all the verification work we did. These are the three largest and most prominent categories: Call for service, crime in progress, and vehicle/pedestrian stop. The rest I'll combine into an 'other' category.
+
+# a. 0 = Call for Service
+# b. 1 = Crime in Progress
+# c. 2 = Vehicle/Pedestrian Stop
+# d. 3 = Other
+
+# Assign values based on the scheme above
+c_ursus1621$contactreason_model<-NA
+c_ursus1621$contactreason_model[c_ursus1621$contact_reason2 %in% c("call for service")] <- 0
+c_ursus1621$contactreason_model[c_ursus1621$contact_reason2 %in% c("crime in progress / investigating suspicious persons or circumstances")] <- 1
+c_ursus1621$contactreason_model[c_ursus1621$contact_reason2 %in% c("vehicle / bike / pedestrian stop")] <- 2
+c_ursus1621$contactreason_model[c_ursus1621$contact_reason2 %in% c("ambush - no warning", "civil assembly", "civil disorder", "consensual encounter / public contact / flag down", "in custody event", "pre-planned activity (arrest/search warrant, parole/probation search)", "welfare check", "unknown")] <- 3
+table(c_ursus1621$contactreason_model, useNA = "ifany")
+
+#7. Recode confirmed armed weapon (c_c_armed_weapon) variable. I am combining firearm replica with firearm because after research on how others have coded this (Justin Nix paper), it is clear that officers would not likely be able to distinguish a replica in the moment.
+c_ursus1621$confirmedarmedweapon_model[c_ursus1621$c_c_armed_weapon=="firearm"] <- 0
+c_ursus1621$confirmedarmedweapon_model[c_ursus1621$c_c_armed_weapon=="firearm replica"] <- 0
+c_ursus1621$confirmedarmedweapon_model[c_ursus1621$c_c_armed_weapon=="other weapon"] <- 1
+c_ursus1621$confirmedarmedweapon_model[c_ursus1621$c_c_armed_weapon=="unknown"] <- 2
+table(c_ursus1621$confirmedarmedweapon_model, useNA = "ifany")
+
+#8. Recode civilian perceived armed weapon (c_p_armed_weapon) variable for statistical analysis.
+c_ursus1621$c_p_armed_weapon_model <- NA
+c_ursus1621$c_p_armed_weapon_model[c_ursus1621$c_p_armed_weapon=="firearm"] <- 0
+c_ursus1621$c_p_armed_weapon_model[c_ursus1621$c_p_armed_weapon=="other weapon"] <- 1
+c_ursus1621$c_p_armed_weapon_model[c_ursus1621$c_p_armed_weapon=="none/missing"] <- 2
+table(c_ursus1621$c_p_armed_weapon_model, useNA = "ifany")
+
+#9. Recode civilian_assaulted_officer variable for statistical analysis.
+c_ursus1621$civilian_assaulted_officer_model <- NA
+c_ursus1621$civilian_assaulted_officer_model[c_ursus1621$civilian_assaulted_officer=="true"] <- 0
+c_ursus1621$civilian_assaulted_officer_model[c_ursus1621$civilian_assaulted_officer=="false"] <- 1
+
+#10. Recode civilian resistance type (c_resistance_type) variable for statistical analysis.
+# a. 0 = life threatening/assaultive
+# b. 1 = active resistance
+# c. 2 = passive/non-compliance
+# d. 3 = fleeing
+table(c_ursus1621$c_resistance_type, useNA = "ifany")
+c_ursus1621$c_resistance_type_model <- NA
+c_ursus1621$c_resistance_type_model[c_ursus1621$c_resistance_type=="assaultive"] <- 0
+c_ursus1621$c_resistance_type_model[c_ursus1621$c_resistance_type=="life_threatening"] <- 0
+c_ursus1621$c_resistance_type_model[c_ursus1621$c_resistance_type=="life-threatening"] <- 0
+c_ursus1621$c_resistance_type_model[c_ursus1621$c_resistance_type=="active resistance"] <- 1
+c_ursus1621$c_resistance_type_model[c_ursus1621$c_resistance_type=="active_resistance"] <- 1
+c_ursus1621$c_resistance_type_model[c_ursus1621$c_resistance_type=="passive non-compliance"] <- 2
+c_ursus1621$c_resistance_type_model[c_ursus1621$c_resistance_type=="passive_non_compliance"] <- 2
+c_ursus1621$c_resistance_type_model[c_ursus1621$c_resistance_type=="fleeing"] <- 3
+
+```
+
+## Clean OFFICER GENDER AND RACE
+
+#### This is new after G&S reviews in June 2022.
+
+```{r}
+#Create new csv file to include only OFFICERS.(n = 9780)
+table(ursus1621$civilian_officer, useNA = "ifany")
+o_ursus1621 <- ursus1621[ursus1621$civilian_officer=="officer",]
+
+# Create race2_gender variable
+o_ursus1621$race2_gender <- NA
+
+# Define combinations of race and gender
+race_gender_combinations <- c(
+  "asian_female" = "asian women",
+  "asian_male" = "asian men",
+  "black_female" = "black women",
+  "black_male" = "black men",
+  "hispanic_female" = "hispanic women",
+  "hispanic_male" = "hispanic men",
+  "indigenous_female" = "indigenous women",
+  "indigenous_male" = "indigenous men",
+  "white_female" = "white women",
+  "white_male" = "white men",
+  "unknown_female" = "unknown women",
+  "unknown_male" = "unknown men"
+)
+
+# Assign values based on the specified conditions
+for (combination in names(race_gender_combinations)) {
+  parts <- strsplit(combination, "_")
+  race <- parts[[1]][1]
+  gender <- parts[[1]][2]
+  o_ursus1621$race2_gender[o_ursus1621$race2 == race & o_ursus1621$gender == gender] <- race_gender_combinations[combination]
+}
+
+# Check the result
+table(o_ursus1621$race2_gender, useNA = "ifany")
+
+# Pull from the civilian file the number of officers involved and number of civilians involved to reconcile cases with the same ID numbers. I want cases where there are multiple officers involved but to drop cases with multiple civilians but the same officer so I don't double count officers. There are 4158 cases that have unique ids. I am getting rid of rows where num_involved_officers is less than num_involved_civilians.
+uniqueid<-c_ursus1621[,c("incident_id", "num_involved_civilians", "num_involved_officers")]
+uniqueid<-unique(uniqueid)
+
+#Merge on the unique IDs and the officer file. Now there are 9724 obs. 
+officersinvolved<-merge(uniqueid,o_ursus1621,by.x="incident_id",by.y="incident_id", all.x = TRUE)
+
+# Create a categorical variable for gender composition:
+# a. Only women officers involved
+# b. Only men officers involved
+# c. 1/2 of the officers involved in the incident are men, 1/2 are women
+# d. More than 50% of the officers involved are men
+# e. More than 50% of the officers involved are women
+
+officersinvolved <- officersinvolved %>%
+  group_by(incident_id) %>%
+  mutate(
+    total_count = n(),
+    women_percent = sum(gender == "female") / total_count,
+    men_percent = sum(gender == "male") / total_count,
+    gendercomp_o = case_when(
+      women_percent == 1 ~ "Only women",
+      men_percent == 1 ~ "Only men",
+      women_percent > 0.5 ~ "Mostly women",
+      men_percent > 0.5 ~ "Mostly men",
+      women_percent > 0 & men_percent > 0 & women_percent == 0.5 & men_percent == 0.5 ~ "50/50",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  ungroup()
+
+# Check the result
+table(officersinvolved$gendercomp_o, useNA = "ifany")
+gendercomp_o<-officersinvolved[,c("incident_id", "gendercomp_o")]
+gendercomp_o <- unique(gendercomp_o)
+
+# Merge the gendercomp_o column based on incident_id
+c_ursus1621 <- merge(c_ursus1621, gendercomp_o, by = "incident_id", all.x = TRUE)
+table(c_ursus1621$gendercomp_o)
+# Recode to make dummy variable for statistical analysis. 
+# a. 0 includes ALL men category ONLY
+# b. 1 includes ANY woman officer present at all
+
+c_ursus1621$gendercomp_o_2<-0
+c_ursus1621$gendercomp_o_2[c_ursus1621$gendercomp_o=="Mostly men"]<-1
+c_ursus1621$gendercomp_o_2[c_ursus1621$gendercomp_o=="50/50"]<-1
+c_ursus1621$gendercomp_o_2[c_ursus1621$gendercomp_o=="Mostly women"]<-1
+c_ursus1621$gendercomp_o_2[c_ursus1621$gendercomp_o=="Only women"]<-1
+table(c_ursus1621$gendercomp_o_2)
+
+
+# Create a categorical variable for race composition:
+# a. Only White officers involved
+# b. Only Black officers involved
+# c. Only Latinx officers involved
+# d. All 'Other' race officers involved
+# e. More than 50% of the officers involved are White
+# f. More than 50% of the officers involved are Black
+# g. More than 50% of the officers involved are Latinx
+# g. More than 50% of the officers involved are Other race
+
+# Combine Asian, Indigenous, and Unknown into Other
+officersinvolved$race2[officersinvolved$race2 %in% c("asian", "indigenous", "unknown")] <- "other"
+
+officersinvolved <- officersinvolved %>%
+  group_by(incident_id) %>%
+  mutate(
+    total_count = n(),
+    white_percent = sum(race2 == "white") / total_count,
+    black_percent = sum(race2 == "black") / total_count,
+    latinx_percent = sum(race2 == "hispanic") / total_count,
+    other_percent = sum(race2 == "other") / total_count,
+    racecomp_o = case_when(
+      white_percent == 1 ~ "All white",
+      black_percent == 1 ~ "All black",
+      latinx_percent == 1 ~ "All latinx",
+      other_percent == 1 ~ "All other",
+      white_percent > 0.5 ~ "Mostly white",
+      black_percent > 0.5 ~ "Mostly black",
+      latinx_percent > 0.5 ~ "Mostly latinx",
+      other_percent > 0.5 ~ "Mostly other",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  ungroup()
+
+# Check the distribution of race composition
+table(officersinvolved$racecomp_o, useNA = "ifany")
+
+# Create a subset of officersinvolved with specific columns to check the NA's. Basically, all of these NA's are my 'Mixed' group so multiple race officers (i.e., 1 black, 2 white, 3 black, 3 latinx, 2 white, 1 other, etc.)
+na_racecomp_o_subset <- officersinvolved[is.na(officersinvolved$racecomp_o), c("incident_id", "num_involved_officers.x", "race2")]
+
+# Identify the Mixed category
+officersinvolved$racecomp_o[is.na(officersinvolved$racecomp_o)] <- "Mixed"
+
+# I am creating the same categorical variable for race composition based on my race1 variable with mixed race that I coded above:
+# a. Only White officers involved
+# b. Only Black officers involved
+# c. Only Latinx officers involved
+# d. All 'Other' race officers involved
+# e. More than 50% of the officers involved are White
+# f. More than 50% of the officers involved are Black
+# g. More than 50% of the officers involved are Latinx
+# g. More than 50% of the officers involved are Other race
+
+# Here, instead, combine Asian, Indigenous, Unknown AND Multiple Race into Other
+officersinvolved$race1[officersinvolved$race1 %in% c("asian", "indigenous", "unknown", "multiple race")] <- "other"
+
+officersinvolved <- officersinvolved %>%
+  group_by(incident_id) %>%
+  mutate(
+    total_count = n(),
+    white_percent = sum(race1 == "white") / total_count,
+    black_percent = sum(race1 == "black") / total_count,
+    latinx_percent = sum(race1 == "hispanic") / total_count,
+    other_percent = sum(race1 == "other") / total_count,
+    racecomp_o_2 = case_when(
+      white_percent == 1 ~ "All white",
+      black_percent == 1 ~ "All black",
+      latinx_percent == 1 ~ "All latinx",
+      other_percent == 1 ~ "All other",
+      white_percent > 0.5 ~ "Mostly white",
+      black_percent > 0.5 ~ "Mostly black",
+      latinx_percent > 0.5 ~ "Mostly latinx",
+      other_percent > 0.5 ~ "Mostly other",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  ungroup()
+
+# Check the distribution of race composition
+table(officersinvolved$racecomp_o_2, useNA = "ifany")
+
+# Same as above: Create a subset of officersinvolved with specific columns to check the NA's. Basically, all of these NA's are my 'Mixed' group so multiple race officers (i.e., 1 black, 2 white, 3 black, 3 latinx, 2 white, 1 other, etc.)
+na_racecomp_o_subset <- officersinvolved[is.na(officersinvolved$racecomp_o_2), c("incident_id", "num_involved_officers.x", "race1")]
+
+# Identify the Mixed category
+officersinvolved$racecomp_o_2[is.na(officersinvolved$racecomp_o_2)] <- "Mixed"
+
+# Merge both racecomp_o and racecomp_o_2 column based on incident_id
+racecomp_o<-officersinvolved[, c("incident_id", "racecomp_o", "racecomp_o_2")]
+racecomp_o <- unique(racecomp_o)
+c_ursus1621 <- merge(c_ursus1621, racecomp_o, by = "incident_id", all.x = TRUE)
+
+# Recode into four categories for statistical analysis. 
+c_ursus1621$racecomp_o_model<-1
+c_ursus1621$racecomp_o_model[c_ursus1621$racecomp_o_2=="All latinx"]<-2
+c_ursus1621$racecomp_o_model[c_ursus1621$racecomp_o_2=="Mostly latinx"]<-2
+c_ursus1621$racecomp_o_model[c_ursus1621$racecomp_o_2=="Mixed"]<-3
+c_ursus1621$racecomp_o_model[c_ursus1621$racecomp_o_2=="All other"]<-4
+c_ursus1621$racecomp_o_model[c_ursus1621$racecomp_o_2=="Mostly other"]<-4
+c_ursus1621$racecomp_o_model[c_ursus1621$racecomp_o_2=="All black"]<-4
+c_ursus1621$racecomp_o_model[c_ursus1621$racecomp_o_2=="Mostly black"]<-4
+table(c_ursus1621$racecomp_o_model)
+
+```
+
+## DROP a few things
+
+```{r}
+#Drop all UNKNOWN race (not useful for analysis). These are all either 'no injury' or 'unknown' (n = 63)
+unknown_race_data <- c_ursus1621[c_ursus1621$race2 == "unknown", ]
+c_ursus1621 <- c_ursus1621[c_ursus1621$race2!="unknown",]
+
+#Drop transgender cases because too small for analysis (n = 6). Now there are 4326 civilians (Final sample size). 
+table(c_ursus1621$gender, useNA = "ifany")
+c_ursus1621 <- c_ursus1621[c_ursus1621$gender!="transgender",]
+
+#Write csv
+write.csv(c_ursus1621, file = "c_ursus1621.csv", row.names = FALSE)
+```

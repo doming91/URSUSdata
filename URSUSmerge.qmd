@@ -1,0 +1,125 @@
+---
+title: "URSUSmerge"
+format: html
+editor: visual
+---
+
+## Merging Annual URSUS data
+
+Authors: Taylor Domingos Date Began: 26 May 2021
+
+```{r}
+setwd("~/Dropbox/URSUS")
+install.packages("janitor")
+library (janitor)
+library (plyr)
+```
+
+## SET UP: Read in Data Files
+
+You will need to download both the Civilian-Officer and Incident CSV files from the OpenJustice California. Here is the link: https://openjustice.doj.ca.gov/data. Scroll to URSUS and you will see downloadable, separate files for each year. Download 2016-2021. Again there should be two CSV files for every year (Civilian-Officer and Incident CSV files).
+
+```{r}
+#2016
+ursus2016 <- read.csv("URSUS_Civilian-Officer_2016.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
+incident2016 <- read.csv("URSUS_Incident_2016.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
+
+#2017
+ursus2017 <- read.csv("URSUS_Civilian-Officer_2017.csv", header = TRUE, stringsAsFactors = FALSE)
+incident2017 <- read.csv("URSUS_Incident_2017.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
+
+#2018
+ursus2018 <- read.csv("URSUS_Civilian-Officer_2018.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
+incident2018 <- read.csv("URSUS_Incident_2018.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
+
+#2019
+ursus2019 <- read.csv("URSUS_Civilian-Officer_2019.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
+incident2019 <- read.csv("URSUS_Incident_2019.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
+
+#2020
+ursus2020 <- read.csv("URSUS_Civilian-Officer_2020.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
+incident2020 <- read.csv("URSUS_Incident_2020.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
+
+#2021
+ursus2021 <- read.csv("URSUS_Civilian-Officer_2021.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
+incident2021 <- read.csv("URSUS_Incident_2021.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
+
+```
+
+## CLEAN DATA: Convert all data to lowercase characters, trim whitespace, make sure all columns match across years
+
+```{r}
+# Data cleaning: trimming whitespace, lowercase column names
+clean_data <- function(df) {
+  df <- data.frame(tolower(trimws(as.matrix(df))), stringsAsFactors = FALSE)
+  df <- clean_names(df, case = "snake")
+  return(df)
+}
+
+# List of data frames
+ursus_list <- list(ursus2016, ursus2017, ursus2018, ursus2019, ursus2020, ursus2021)
+incident_list <- list(incident2016, incident2017, incident2018, incident2019, incident2020, incident2021)
+
+# Apply the clean_data function to the lists
+ursus_list <- lapply(ursus_list, clean_data)
+incident_list <- lapply(incident_list, clean_data)
+
+# Assign the cleaned data frames back to the original variables
+for (i in seq_along(ursus_list)) {
+  assign(paste0("ursus", 2016 + i - 1), ursus_list[[i]])
+}
+
+for (i in seq_along(incident_list)) {
+  assign(paste0("incident", 2016 + i - 1), incident_list[[i]])
+}
+
+# Rename incident id column in 2019 data
+names (ursus2019) [names(ursus2019) == "i_incident_id"] <- "incident_id"
+names (incident2019) [names(incident2019) == "i_incident_id"] <- "incident_id"
+
+# Add missing columns to all years
+# Primary agency indicator is only included in 2017
+incident2016$primary_agency_indicator <- NA
+incident2018$primary_agency_indicator <- NA
+incident2019$primary_agency_indicator <- NA
+incident2020$primary_agency_indicator <- NA
+incident2021$primary_agency_indicator <- NA
+
+# Number of agencies involved is missing in 2016 and 2017
+incident2016$num_involved_agencies <- NA
+incident2017$num_involved_agencies <- NA
+
+# Civilian crime qualifier is missing for 2018-2021
+ursus2018$civilian_crime_qualifier <- NA
+ursus2019$civilian_crime_qualifier <- NA
+ursus2020$civilian_crime_qualifier <- NA
+ursus2021$civilian_crime_qualifier <- NA
+
+# Civilian_mental_status (2016-2017) is renamed signs civilian_signs_impairment_disability(2018-2021)
+names (ursus2016) [names(ursus2016) == "civilian_mental_status"] <- "civilian_signs_impairment_disability"
+names (ursus2017) [names(ursus2017) == "civilian_mental_status"] <- "civilian_signs_impairment_disability"
+
+# Hi_islander_race missing 2016-2017
+ursus2016$hi_islander_race <- NA
+ursus2017$hi_islander_race <- NA
+
+
+```
+
+## MERGE DATA: Merge incident and ursus data and append years into one dataframe
+
+```{r}
+# Merge incident and civilian-officer files
+data2016 <- merge (ursus2016, incident2016, by.x = "incident_id", by.y = "incident_id", all.x = TRUE, all.y = TRUE)
+data2017 <- merge (ursus2017, incident2017, by.x = "incident_id", by.y = "incident_id", all.x = TRUE, all.y = TRUE)
+data2018 <- merge (ursus2018, incident2018, by.x = "incident_id", by.y = "incident_id", all.x = TRUE, all.y = TRUE)
+data2019 <- merge (ursus2019, incident2019, by.x = "incident_id", by.y = "incident_id", all.x = TRUE, all.y = TRUE)
+data2020 <- merge (ursus2020, incident2020, by.x = "incident_id", by.y = "incident_id", all.x = TRUE, all.y = TRUE)
+data2021 <- merge (ursus2021, incident2021, by.x = "incident_id", by.y = "incident_id", all.x = TRUE, all.y = TRUE)
+
+# Append years into one dataframe
+ursusmerged <- rbind (data2016,data2017,data2018,data2019,data2020,data2021)
+
+# Write CSV
+write.csv(ursusmerged, file = "ursusmerged1621.csv")
+```
