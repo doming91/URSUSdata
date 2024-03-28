@@ -1,0 +1,353 @@
+---
+title: "URSUSanalysis"
+format: html
+editor: visual
+---
+
+## Analyzing Annual URSUS data
+
+Authors: Taylor Domingos 
+Date Began: May 2021
+
+```{r}
+setwd("~/Dropbox/URSUS")
+install.packages("janitor")
+library (janitor)
+library (plyr)
+library(stringr)
+library(dplyr)
+
+# Read in CSV
+c_ursus1621 <- read.csv(file = "c_ursus1621.csv", stringsAsFactors = FALSE)
+
+```
+
+## Create separate datasets based on race of civilians: White, Black, Latinx. Make outcome binary: Death == 1. 
+
+```{r}
+#White model
+white_civilians <- c_ursus1621[c_ursus1621$race1=="white",]
+white_civilians$outcome<-0
+white_civilians$outcome[white_civilians$injury_level2=="death"]<-1
+table(white_civilians$outcome)
+
+#GLM model with all controls included. Exponentiate to get odds ratios.
+white_model <- glm (outcome
+               ~ as.factor(gender_model)
+               + as.factor(age_model)
+               #+ as.factor(civilian_assaulted_officer_model)
+               #+ as.factor(confirmedarmedweapon_model)
+               + as.factor(c_p_armed_weapon_model)
+               #+ as.factor(c_perceivedvsconfirmed_model)
+               #+ as.factor(c_resistance_type_model)
+               + as.factor(gendercomp_o_2)
+               + as.factor(racecomp_o_model)
+               + as.factor(contactreason_model)
+               ,data = white_civilians, family = "binomial")
+summary(white_model)
+exp(coef(white_model)) 
+BIC(white_model)
+
+#Latinx model
+latinx_civilians <- c_ursus1621[c_ursus1621$race1=="hispanic",]
+latinx_civilians$outcome<-0
+latinx_civilians$outcome[latinx_civilians$injury_level2=="death"]<-1
+table(latinx_civilians$outcome)
+
+#GLM model with all controls included. Exponentiate to get odds ratios.
+latinx_model <- glm (outcome
+               ~ as.factor(gender_model)
+               + as.factor(age_model)
+               #+ as.factor(civilian_assaulted_officer_model)
+               #+ as.factor(confirmedarmedweapon_model)
+               + as.factor(c_p_armed_weapon_model)
+               #+ as.factor(c_perceivedvsconfirmed_model)
+               #+ as.factor(c_resistance_type_model)
+               + as.factor(gendercomp_o_2)
+               + as.factor(racecomp_o_model)
+              + as.factor(contactreason_model)
+               ,data = latinx_civilians, family = "binomial")
+summary(latinx_model)
+exp(coef(latinx_model)) 
+BIC(latinx_model)
+
+#Black model
+black_civilians <- c_ursus1621[c_ursus1621$race1=="black",]
+black_civilians$outcome<-0
+black_civilians$outcome[black_civilians$injury_level2=="death"]<-1
+table(black_civilians$outcome)
+
+#GLM model with all controls included. Exponentiate to get odds ratios.
+black_model <- glm (outcome
+               ~ as.factor(gender_model)
+               + as.factor(age_model)
+               #+ as.factor(civilian_assaulted_officer_model)
+               #+ as.factor(confirmedarmedweapon_model)
+               + as.factor(c_p_armed_weapon_model)
+               #+ as.factor(c_perceivedvsconfirmed_model)
+               #+ as.factor(c_resistance_type_model)
+               + as.factor(gendercomp_o_2)
+               + as.factor(racecomp_o_model)
+               + as.factor(contactreason_model)
+               ,data = black_civilians, family = "binomial")
+summary(black_model)
+exp(coef(black_model)) 
+BIC(black_model)
+
+```
+
+## Create subset of one officer & one civilian incidents for Appendix. 
+
+```{r}
+#One civilian, one officer model
+onecivilian_oneofficer <- c_ursus1621[c_ursus1621$num_involved_civilians == 1 & c_ursus1621$num_involved_officers == 1, ]
+onecivilian_oneofficer$outcome<-0
+onecivilian_oneofficer$outcome[onecivilian_oneofficer$injury_level2=="death"]<-1
+table(onecivilian_oneofficer$outcome)
+
+#GLM model with all controls included. Exponentiate to get odds ratios.
+onecivilian_oneofficer_model <- glm (outcome
+               ~ as.factor(race1_model)
+               + as.factor(gender_model)
+               + as.factor(age_model)
+               #+ as.factor(civilian_assaulted_officer_model)
+               #+ as.factor(confirmedarmedweapon_model)
+               + as.factor(c_p_armed_weapon_model)
+               #+ as.factor(c_perceivedvsconfirmed_model)
+               #+ as.factor(c_resistance_type_model)
+               #+ as.factor(gendercomp_o_2)
+               + as.factor(racecomp_o_model)
+               #+ as.factor(contactreason_model)
+               ,data = onecivilian_oneofficer, family = "binomial")
+summary(onecivilian_oneofficer_model)
+exp(coef(onecivilian_oneofficer_model)) 
+BIC(onecivilian_oneofficer_model)
+
+```
+
+## Full sample model for Appendix. 
+
+```{r}
+#Use full dataset
+c_ursus1621$outcome<-0
+c_ursus1621$outcome[c_ursus1621$injury_level2=="death"]<-1
+table(c_ursus1621$outcome)
+
+#GLM model with all controls included. Exponentiate to get odds ratios.
+fullsample_model <- glm (outcome
+               ~ as.factor(race1_model)
+               + as.factor(gender_model)
+               + as.factor(age_model)
+               #+ as.factor(civilian_assaulted_officer_model)
+               #+ as.factor(confirmedarmedweapon_model)
+               + as.factor(c_p_armed_weapon_model)
+               #+ as.factor(c_perceivedvsconfirmed_model)
+               #+ as.factor(c_resistance_type_model)
+               + as.factor(gendercomp_o_2)
+               + as.factor(racecomp_o_model)
+               #+ as.factor(contactreason_model)
+               ,data = c_ursus1621, family = "binomial")
+summary(fullsample_model)
+exp(coef(fullsample_model)) 
+BIC(fullsample_model)
+```
+
+## Create a fatal shooting and non-fatal shooting subset
+
+```{r}
+# Create a cross-tab of shootings (both fatal and non-fatal) versus other incidents (both fatal and non-fatal)
+# Create custom names for rows and columns
+row_names <- c("Non-Shooting Incidents", "Shooting Incidents")
+col_names <- c("Non-Fatal", "Fatal")
+
+# Create shooting and non-shooting incidents
+shooting_incidents <- grepl("gunshot", c_ursus1621$injury_type, ignore.case = TRUE)
+non_shooting_incidents <- !shooting_incidents
+
+# Create fatal and non-fatal incidents
+fatal_incidents <- c_ursus1621$injury_level2 == "death"
+non_fatal_incidents <- !fatal_incidents
+
+# Create a cross-tab 
+cross_tab <- table(
+  Shooting_Incidents = factor(shooting_incidents, levels = c(FALSE, TRUE), labels = row_names),
+  Outcome = factor(fatal_incidents, levels = c(FALSE, TRUE), labels = col_names)
+)
+
+# Print the cross-tabulation with custom row and column names
+print(cross_tab)
+
+# Create a subset for incidents involving shootings. The best way to do this is to pull the word gunshot from the injury_type variable (n=1471).
+shooting_incidents <- c_ursus1621[grepl("gunshot", c_ursus1621$injury_type, ignore.case = TRUE), ]
+
+# Set outcome for shooting incidents
+shooting_incidents$outcome <- ifelse(shooting_incidents$injury_level2 == "death", 1, 0)
+
+#GLM model with all controls included. Exponentiate to get odds ratios.
+shooting_incidents_model <- glm (outcome
+               ~ as.factor(race1_model)
+               + as.factor(gender_model)
+               + as.factor(age_model)
+               #+ as.factor(civilian_assaulted_officer_model)
+               #+ as.factor(confirmedarmedweapon_model)
+               + as.factor(c_p_armed_weapon_model)
+               #+ as.factor(c_perceivedvsconfirmed_model)
+               #+ as.factor(c_resistance_type_model)
+               + as.factor(gendercomp_o_2)
+               + as.factor(racecomp_o_model)
+               #+ as.factor(contactreason_model)
+               ,data = shooting_incidents, family = "binomial")
+summary(shooting_incidents_model)
+exp(coef(shooting_incidents_model)) 
+BIC(shooting_incidents_model)
+
+#Split by race and run models
+black_civilians_shooting <- shooting_incidents[shooting_incidents$race1=="black",]
+white_civilians_shooting <- shooting_incidents[shooting_incidents$race1=="white",]
+latinx_civilians_shooting <- shooting_incidents[shooting_incidents$race1=="hispanic",]
+
+#Get tables by outcome and gender
+table(white_civilians_shooting$outcome, white_civilians_shooting$gender)
+table(latinx_civilians_shooting$outcome, latinx_civilians_shooting$gender)
+table(black_civilians_shooting$outcome, black_civilians_shooting$gender)
+
+#GLM model with all controls included. Exponentiate to get odds ratios.
+white_model_shooting <- glm (outcome
+               ~ as.factor(gender_model)
+               + as.factor(age_model)
+               #+ as.factor(civilian_assaulted_officer_model)
+               #+ as.factor(confirmedarmedweapon_model)
+               + as.factor(c_p_armed_weapon_model)
+               #+ as.factor(c_perceivedvsconfirmed_model)
+               #+ as.factor(c_resistance_type_model)
+               + as.factor(gendercomp_o_2)
+               + as.factor(racecomp_o_model)
+               #+ as.factor(contactreason_model)
+               ,data = white_civilians_shooting, family = "binomial")
+summary(white_model_shooting)
+exp(coef(white_model_shooting)) 
+BIC(white_model_shooting)
+
+#GLM model with all controls included. Exponentiate to get odds ratios.
+latinx_model_shooting <- glm (outcome
+               ~ as.factor(gender_model)
+               + as.factor(age_model)
+               #+ as.factor(civilian_assaulted_officer_model)
+               #+ as.factor(confirmedarmedweapon_model)
+               + as.factor(c_p_armed_weapon_model)
+               #+ as.factor(c_perceivedvsconfirmed_model)
+               #+ as.factor(c_resistance_type_model)
+               + as.factor(gendercomp_o_2)
+               + as.factor(racecomp_o_model)
+               #+ as.factor(contactreason_model)
+               ,data = latinx_civilians_shooting, family = "binomial")
+summary(latinx_model_shooting)
+exp(coef(latinx_model_shooting)) 
+BIC(latinx_model_shooting)
+
+#GLM model with all controls included. Exponentiate to get odds ratios.
+black_model_shooting <- glm (outcome
+               ~ as.factor(gender_model)
+               + as.factor(age_model)
+               #+ as.factor(civilian_assaulted_officer_model)
+               #+ as.factor(confirmedarmedweapon_model)
+               + as.factor(c_p_armed_weapon_model)
+               #+ as.factor(c_perceivedvsconfirmed_model)
+               #+ as.factor(c_resistance_type_model)
+               + as.factor(gendercomp_o_2)
+               + as.factor(racecomp_o_model)
+               #+ as.factor(contactreason_model)
+               ,data = black_civilians_shooting, family = "binomial")
+summary(black_model_shooting)
+exp(coef(black_model_shooting)) 
+BIC(black_model_shooting)
+
+#Now subset for the inverse condition, so fatal non-shooting and non-fatal non-shooting
+# Create a subset for incidents not involving shootings (n=2855).
+non_shooting_incidents <- c_ursus1621[!grepl("gunshot", c_ursus1621$injury_type, ignore.case = TRUE), ]
+
+# Set outcome for non-shooting incidents
+non_shooting_incidents$outcome <- ifelse(non_shooting_incidents$injury_level2 == "death", 1, 0)
+
+#GLM model with all controls included. Exponentiate to get odds ratios.
+nonshooting_incidents_model <- glm (outcome
+               ~ as.factor(race1_model)
+               + as.factor(gender_model)
+               + as.factor(age_model)
+               #+ as.factor(civilian_assaulted_officer_model)
+               #+ as.factor(confirmedarmedweapon_model)
+               + as.factor(c_p_armed_weapon_model)
+               #+ as.factor(c_perceivedvsconfirmed_model)
+               #+ as.factor(c_resistance_type_model)
+               + as.factor(gendercomp_o_2)
+               + as.factor(racecomp_o_model)
+               #+ as.factor(contactreason_model)
+               ,data = non_shooting_incidents, family = "binomial")
+summary(nonshooting_incidents_model)
+exp(coef(nonshooting_incidents_model)) 
+BIC(nonshooting_incidents_model)
+
+#Split by race and run models
+black_civilians_nonshooting <- non_shooting_incidents[non_shooting_incidents$race1=="black",]
+white_civilians_nonshooting <- non_shooting_incidents[non_shooting_incidents$race1=="white",]
+latinx_civilians_nonshooting <- non_shooting_incidents[non_shooting_incidents$race1=="hispanic",]
+
+#Get tables by outcome and gender
+table(white_civilians_nonshooting$outcome, white_civilians_nonshooting$gender)
+table(latinx_civilians_nonshooting$outcome, latinx_civilians_nonshooting$gender)
+table(black_civilians_nonshooting$outcome, black_civilians_nonshooting$gender)
+
+#GLM model with all controls included. Exponentiate to get odds ratios.
+white_model_nonshooting_model <- glm (outcome
+               ~ as.factor(gender_model)
+               + as.factor(age_model)
+               #+ as.factor(civilian_assaulted_officer_model)
+               #+ as.factor(confirmedarmedweapon_model)
+               + as.factor(c_p_armed_weapon_model)
+               #+ as.factor(c_perceivedvsconfirmed_model)
+               #+ as.factor(c_resistance_type_model)
+               + as.factor(gendercomp_o_2)
+               + as.factor(racecomp_o_model)
+               #+ as.factor(contactreason_model)
+               ,data = white_civilians_nonshooting, family = "binomial")
+summary(white_model_nonshooting_model)
+exp(coef(white_model_nonshooting_model)) 
+BIC(white_model_nonshooting_model)
+
+#GLM model with all controls included. Exponentiate to get odds ratios.
+latinx_model_nonshooting_model <- glm (outcome
+               ~ as.factor(gender_model)
+               + as.factor(age_model)
+               #+ as.factor(civilian_assaulted_officer_model)
+               #+ as.factor(confirmedarmedweapon_model)
+               + as.factor(c_p_armed_weapon_model)
+               #+ as.factor(c_perceivedvsconfirmed_model)
+               #+ as.factor(c_resistance_type_model)
+               + as.factor(gendercomp_o_2)
+               + as.factor(racecomp_o_model)
+               #+ as.factor(contactreason_model)
+               ,data = latinx_civilians_nonshooting, family = "binomial")
+summary(latinx_model_nonshooting_model)
+exp(coef(latinx_model_nonshooting_model)) 
+BIC(latinx_model_nonshooting_model)
+
+#GLM model with all controls included. Exponentiate to get odds ratios.
+black_model_nonshooting_model <- glm (outcome
+               ~ as.factor(gender_model)
+               + as.factor(age_model)
+               #+ as.factor(civilian_assaulted_officer_model)
+               #+ as.factor(confirmedarmedweapon_model)
+               + as.factor(c_p_armed_weapon_model)
+               #+ as.factor(c_perceivedvsconfirmed_model)
+               #+ as.factor(c_resistance_type_model)
+               + as.factor(gendercomp_o_2)
+               + as.factor(racecomp_o_model)
+               #+ as.factor(contactreason_model)
+               ,data = black_civilians_nonshooting, family = "binomial")
+summary(black_model_nonshooting_model)
+exp(coef(black_model_nonshooting_model)) 
+BIC(black_model_nonshooting_model)
+
+
+
+```
